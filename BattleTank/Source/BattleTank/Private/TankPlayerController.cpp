@@ -2,7 +2,7 @@
 
 //#include "BattleTank.h"
 #include "TankPlayerController.h"
-
+#include "DrawDebugHelpers.h"
 
 
 void ATankPlayerController::BeginPlay() 
@@ -27,6 +27,7 @@ void ATankPlayerController::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	
 	AimTowardCrossahair();
+
 }
 
 ATank* ATankPlayerController::GetControlledTank() const 
@@ -39,14 +40,12 @@ void ATankPlayerController::AimTowardCrossahair()
 	if (!GetControlledTank()) { return; }
 
 	FVector HitLocation; //Out parameter
-	if (GetSightRayHitLocation(HitLocation))
+	if (GetSightRayHitLocation(HitLocation))	//Has side effect is going line trace
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("HitLocation: %s"), *HitLocation.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("Hit Location: %s"), *HitLocation.ToString());
 
 	}
-
-
-		//TODO Tell controlled tank to aim at this point
+	//TODO Tell controlled tank to aim at this point
 }
 
 	//Get world location if linetrace through crosshair, true if it hits landscape 
@@ -61,20 +60,32 @@ bool ATankPlayerController::GetSightRayHitLocation(FVector& HitLocation) const
 	FVector LookDirection;
 	if (GetLookDirection(ScreenLocation, LookDirection))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Look direction: %s"), *LookDirection.ToString());
-
+		GetLookVectorHitLocation(LookDirection, HitLocation);
 	}
-	
-
 	//The screen position of the crosshair
-	HitLocation = FVector(1.0);
 	return true;
+}
+
+bool ATankPlayerController::GetLookVectorHitLocation(FVector LookDirection, FVector& HitLocation) const
+{
+	FHitResult HitResult; 
+	auto StartLocation = PlayerCameraManager->GetCameraLocation();
+	auto EndLocation = StartLocation + (LookDirection * LineTraceRange);
+
+
+	if (GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECollisionChannel::ECC_Visibility))//LinetraceSucceed
+	{
+		HitLocation = HitResult.Location;
+		return true;
+	}
+	HitLocation = FVector(0);
+	return false;
 }
 
 bool ATankPlayerController::GetLookDirection(FVector2D ScreenLocation, FVector& LookDirection) const
 {
 	FVector CameraWorldLocation;
 	return DeprojectScreenPositionToWorld(ScreenLocation.X, ScreenLocation.Y, CameraWorldLocation, LookDirection);
-
 }
+
 
